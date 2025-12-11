@@ -1,10 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Restaurants</title>
+  <meta charset="utf-8" />
+  <title>Restaurants (Static)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 24px; max-width: 1000px; margin: auto; }
+    h1 { margin-bottom: 8px; }
+    .controls { margin-bottom: 16px; }
+    input[type="search"] { padding: 6px 8px; width: 280px; }
+    .list { list-style: none; padding: 0; margin: 0; }
+    .card { padding: 10px 12px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); margin-bottom: 8px; }
+    .meta { color: #666; font-size: 0.9em; }
+  </style>
 </head>
 <body>
-  <h1>Restaurants Data</h1>
-  <p>Affichage des données MongoDB (à compléter plus tard)</p>
+  <h1>Restaurants (Static)</h1>
+  <p class="meta">This page is static — it reads the exported <code>restaurants.json</code> file and renders it in the browser. Exported from MongoDB.</p>
+
+  <div class="controls">
+    <label>Search name: <input id="q" type="search" placeholder="type a restaurant name or cuisine" /></label>
+    &nbsp;
+    <label>Limit:
+      <select id="limit">
+        <option>50</option><option>100</option><option selected>200</option><option>500</option><option>1000</option>
+      </select>
+    </label>
+    &nbsp; <button id="apply">Apply</button>
+  </div>
+
+  <div id="status">Loading data…</div>
+  <ul id="list" class="list" aria-live="polite"></ul>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const listEl = document.getElementById('list');
+    const inputQ = document.getElementById('q');
+    const selLimit = document.getElementById('limit');
+    const btn = document.getElementById('apply');
+
+    let restaurants = [];
+
+    async function loadData() {
+      try {
+        statusEl.textContent = 'Fetching restaurants.json (this is served by nginx)...';
+        const res = await fetch('restaurants.json', {cache: "no-store"});
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        restaurants = await res.json();
+        statusEl.textContent = `Loaded ${restaurants.length} documents.`;
+        render();
+      } catch (err) {
+        statusEl.textContent = 'Failed to load restaurants.json — check file exists in web/ and was exported correctly. ' + err;
+      }
+    }
+
+    function render() {
+      const q = (inputQ.value || '').toLowerCase().trim();
+      const limit = parseInt(selLimit.value, 10) || 200;
+      listEl.innerHTML = '';
+      let shown = 0;
+      for (const r of restaurants) {
+        if (shown >= limit) break;
+        if (q) {
+          const name = (r.name||'').toString().toLowerCase();
+          const cuisine = (r.cuisine||'').toString().toLowerCase();
+          if (!name.includes(q) && !cuisine.includes(q)) continue;
+        }
+        const li = document.createElement('li');
+        li.className = 'card';
+        const name = r.name || r.nom || 'Unnamed';
+        const cuisine = r.cuisine || '';
+        const borough = r.borough || '';
+        li.innerHTML = `<div><strong>${escapeHtml(name)}</strong> <span class="meta">— ${escapeHtml(cuisine)} (${escapeHtml(borough)})</span></div>
+                        <div class="meta">id: ${escapeHtml(r.restaurant_id||'')}</div>`;
+        listEl.appendChild(li);
+        shown++;
+      }
+      statusEl.textContent = `Showing ${shown} / ${restaurants.length} documents.`;
+    }
+
+    function escapeHtml(s) {
+      return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    btn.addEventListener('click', render);
+    inputQ.addEventListener('keyup', (e)=> { if (e.key === 'Enter') render(); });
+
+    // Kick off
+    loadData();
+  </script>
 </body>
 </html>
