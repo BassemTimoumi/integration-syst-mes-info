@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - jenkins_data:/var/jenkins_data
+    networks:
+      - bis_network
+
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - bis_network
+
+  web1:
+    build: ./web
+    container_name: web1
+    ports:
+      - "8081:80"
+    networks:
+      - bis_network
+
+  web2:
+    build: ./web
+    container_name: web2
+    ports:
+      - "8082:80"
+    networks:
+      - bis_network
+
+volumes:
+  jenkins_home:
+  jenkins_data:
+  mongo_data:
+
+networks:
+  bis_network:
+    external: true
